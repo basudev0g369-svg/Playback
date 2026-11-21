@@ -75,6 +75,7 @@
 		"ornithe.Mixin_ItemInHandRenderer_Puppet",
 		"ornithe.Mixin_LibraryLWJGLOpenAL_Audio",
 		"ornithe.Mixin_ListWidget_ScreenState",
+		"ornithe.Mixin_LivingEntity_Puppet",
 		"ornithe.Mixin_LocalClientPlayerEntity_Puppet",
 		"ornithe.Mixin_Minecraft_Core",
 		"ornithe.Mixin_PacketDecoder_Core",

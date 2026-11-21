@@ -6,6 +6,7 @@ import net.minecraft.client.entity.living.player.Input
 import net.minecraft.client.entity.living.player.LocalClientPlayerEntity
 import net.minecraft.client.sound.instance.SimpleSoundInstance
 import net.minecraft.entity.Entity
+import net.minecraft.entity.living.LivingEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.network.PacketByteBuf
 import net.minecraft.resources.Identifier
@@ -83,7 +84,12 @@ object Puppet : PuppetCore() {
 		player.input = Input().apply { sneaking = snapshot.has(SHIFT) }
 		applySlots(player)
 		player.inventory.selectedSlot = Math.clamp(snapshot.selectedSlot.toLong(), 0, 8)
-		applyBody(player, snapshot)
+	}
+
+	@JvmStatic
+	fun afterBaseTick(entity: LivingEntity) {
+		if (entity !is LocalClientPlayerEntity || !Keyframe.active || Keyframe.rolling) return
+		applyBody(entity, snapshot ?: return)
 	}
 
 	@JvmStatic
