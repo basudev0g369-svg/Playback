@@ -1,7 +1,7 @@
 mod.id = "keyframe"
 mod.name = "Keyframe"
 mod.group = "org.polyfrost.keyframe"
-mod.version = "1.0.0-alpha.15"
+mod.version = "1.0.0-alpha.16"
 
 deps.fabric_loader = "0.20.1"
 deps.fabric_kotlin = "1.14.2+kotlin.2.4.21"
@@ -13,7 +13,7 @@ deps.feather = "2"
 deps.osl = "0.24.0"
 deps.flashback_legacy = "0.1.0+1.8.9"
 deps.flashback_min = "0.1.0"
-deps.pylon = "0.2.7"
+deps.pylon = "0.2.9"
 
 ["1.21.1"]
 mod.mc_compat = "1.21.1"
