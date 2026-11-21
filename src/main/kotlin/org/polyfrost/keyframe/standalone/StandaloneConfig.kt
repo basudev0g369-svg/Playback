@@ -5,6 +5,7 @@ import net.fabricmc.loader.api.FabricLoader
 import org.polyfrost.keyframe.standalone.editor.MAX_FRAME_RATE
 import org.polyfrost.keyframe.standalone.editor.MIN_FRAME_RATE
 import org.polyfrost.keyframe.standalone.editor.clampFrameRate
+import org.polyfrost.keyframe.standalone.editor.settingsVersion
 import org.polyfrost.keyframe.standalone.export.ColorFormat
 import org.polyfrost.keyframe.standalone.export.Container
 import org.polyfrost.keyframe.standalone.export.ExportSettings
@@ -129,6 +130,7 @@ object StandaloneConfig : Config("keyframe-standalone.json", "assets/keyframe/ic
 		property.addMetadata("optionLabels", supported.map { labels[it.ordinal] })
 		if (encoder !in supported) encoder = supported.first()
 		OptionWidgets.refresh(property)
+		settingsVersion++
 	}
 
 	fun exportSettings(): ExportSettings {

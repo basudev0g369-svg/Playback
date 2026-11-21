@@ -71,7 +71,7 @@ internal fun EditorPages() {
 				PreviewArea(Modifier.weight(1f).fillMaxHeight())
 				SlidePane(!exporting && inspecting, INSPECTOR_WIDTH, Alignment.Start) { Inspector() }
 				SlidePane(exporting, videoWidth, Alignment.Start) {
-					VideoSettings(videoWidth - PANEL_PADDING * 2, OneConfigTheme.current.sidebarBackground)
+					VideoSettings(OneConfigTheme.current.sidebarBackground)
 					ExportFooter()
 				}
 			}

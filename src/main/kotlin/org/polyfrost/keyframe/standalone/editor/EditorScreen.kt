@@ -44,16 +44,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -87,6 +86,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mojang.blaze3d.platform.InputConstants
+import kotlin.math.roundToInt
 import org.polyfrost.keyframe.standalone.StandaloneConfig
 import org.polyfrost.keyframe.standalone.export.PreviewFrame
 import org.polyfrost.keyframe.standalone.export.PreviewTexture
@@ -97,6 +97,21 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 /*import net.minecraft.client.gui.GuiElement
 *///?}
 import org.polyfrost.oneconfig.api.ui.v1.ExperimentalOneConfigUiApi
+import org.polyfrost.oneconfig.api.config.v1.MetaKeys
+import org.polyfrost.oneconfig.api.config.v1.Property
+import org.polyfrost.oneconfig.api.config.v1.get
+import org.polyfrost.oneconfig.api.ui.v1.components.LabeledField
+import org.polyfrost.oneconfig.api.ui.v1.components.NumberField
+import org.polyfrost.oneconfig.api.ui.v1.components.PanelSection
+import org.polyfrost.oneconfig.api.ui.v1.components.SectionHeader
+import org.polyfrost.oneconfig.api.ui.v1.components.SegmentedChips
+import org.polyfrost.oneconfig.api.ui.v1.components.Select
+import org.polyfrost.oneconfig.api.ui.v1.components.TabItem
+import org.polyfrost.oneconfig.api.ui.v1.components.TabRow
+import org.polyfrost.oneconfig.api.ui.v1.components.TabStyle
+import org.polyfrost.oneconfig.api.ui.v1.components.TextField
+import org.polyfrost.oneconfig.api.ui.v1.components.ToggleControl
+import org.polyfrost.oneconfig.api.ui.v1.components.ToggleRow
 import org.polyfrost.oneconfig.api.ui.v1.a11y.Motion
 import org.polyfrost.oneconfig.api.ui.v1.components.Chip
 import org.polyfrost.oneconfig.api.ui.v1.components.Icon
@@ -111,8 +126,6 @@ import org.polyfrost.oneconfig.api.ui.v1.keybind.trackTextInputFocus
 import org.polyfrost.oneconfig.api.ui.v1.theme.OneConfigTheme
 import org.polyfrost.oneconfig.api.ui.v1.theme.ProvideOneConfigTheme
 import org.polyfrost.oneconfig.api.ui.v1.theme.concentric
-import org.polyfrost.oneconfig.internal.ui.components.settings.LocalOptionWidth
-import org.polyfrost.oneconfig.internal.ui.components.settings.Option
 import org.polyfrost.compose.minecraft.screen.ComposeScreen
 
 private const val PLAY_ICON = "/assets/keyframe/ico/play.svg"
@@ -126,7 +139,7 @@ private val SHAPES = listOf(
 	Shape("Square", 1, 1),
 	Shape("Classic", 4, 3),
 )
-private val SIZES = listOf("1080p" to 1080, "1440p" to 1440, "4K" to 2160)
+private val SIZES = mapOf(1080 to "1080p", 1440 to "1440p", 2160 to "4K")
 private val SETTINGS = listOf("audio", "hud")
 private val MORE_SETTINGS = listOf("container", "autoEncoder", "encoder", "quality", "colorFormat", "keyframeInterval", "preview", "outputFolder", "extraArgs", "ffmpegPath")
 private const val MAX_NAME_LENGTH = 64
@@ -526,40 +539,50 @@ private fun PreviewMessage(text: String) {
 }
 
 @Composable
-internal fun ColumnScope.VideoSettings(optionWidth: Dp, background: Color) {
+internal fun ColumnScope.VideoSettings(background: Color) {
 	val width = Editor.exportWidth
 	val height = Editor.exportHeight
 	val shortEdge = minOf(width, height)
 	val problem = Editor.exportProblem
 	val scroll = rememberScrollState()
 	LaunchedEffect(problem) { if (problem != null) Editor.moreSettings = true }
-	Column(Modifier.weight(1f).fadingEdges(scroll, background).verticalScroll(scroll).padding(bottom = 12.dp)) {
-		SmallHeading("Aspect ratio")
-		ChipRow {
-			SHAPES.forEach { shape ->
-				val (w, h) = frameSize(shape.wide, shape.tall, shortEdge)
-				Tooltip({ Label(shape.name) }, Modifier, Alignment.BottomCenter) {
-					Chip("${shape.wide}:${shape.tall}", w == width && h == height, { Editor.setFrame(w, h) })
-				}
+	Column(
+		Modifier.weight(1f).fadingEdges(scroll, background).verticalScroll(scroll).padding(top = 4.dp, bottom = 12.dp),
+		verticalArrangement = Arrangement.spacedBy(12.dp),
+	) {
+		PanelSection("Aspect ratio") {
+			TabRow(
+				SHAPES.map { TabItem(frameSize(it.wide, it.tall, shortEdge), "${it.wide}:${it.tall}", tooltip = it.name) },
+				width to height,
+				{ (w, h) -> Editor.setFrame(w, h) },
+				style = TabStyle.Chips,
+				fill = false,
+			)
+		}
+		PanelSection("Size") {
+			SegmentedChips(SIZES.keys.toList(), shortEdge, { edge ->
+				val scale = edge.toDouble() / shortEdge
+				Editor.setFrame(evenSize(width * scale), evenSize(height * scale))
+			}, label = SIZES::getValue)
+		}
+		PanelSection("Frame rate") {
+			Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
+				NumberField(
+					Editor.exportFps.toFloat(),
+					{ Editor.setFrameRate(clampFrameRate(it.roundToInt())) },
+					Modifier.focusArea(),
+					range = MIN_FRAME_RATE.toFloat()..MAX_FRAME_RATE.toFloat(),
+					unit = "fps",
+					commitOnType = false,
+				)
+				if (Editor.exportFps > SMOOTH_FRAME_RATE) Label("Above $SMOOTH_FRAME_RATE fps exports slowly and most players drop the extra frames", color = DANGER, size = 11.sp, lines = 3)
+				else Label("At least $MIN_FRAME_RATE", color = muted(), size = 11.sp)
 			}
 		}
-		SmallHeading("Size")
-		ChipRow {
-			SIZES.forEach { (label, edge) ->
-				Chip(label, edge == shortEdge, {
-					val scale = edge.toDouble() / shortEdge
-					Editor.setFrame(evenSize(width * scale), evenSize(height * scale))
-				})
-			}
-		}
-		SmallHeading("Frame rate")
-		FrameRateField()
-		CompositionLocalProvider(LocalOptionWidth provides optionWidth) {
-			SETTINGS.forEach { Setting(it) }
-			MoreToggle(Editor.moreSettings) { Editor.moreSettings = !Editor.moreSettings }
-			AnimatedVisibility(Editor.moreSettings) {
-				Column { MORE_SETTINGS.forEach { Setting(it) } }
-			}
+		SETTINGS.forEach { Setting(it) }
+		SectionHeader("More settings", expanded = Editor.moreSettings, onToggle = { Editor.moreSettings = !Editor.moreSettings })
+		AnimatedVisibility(Editor.moreSettings) {
+			Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { MORE_SETTINGS.forEach { Setting(it) } }
 		}
 	}
 }
@@ -579,33 +602,45 @@ internal fun ExportFooter() {
 	ActionButton("Export video", null, Modifier.fillMaxWidth(), Editor.clips.isNotEmpty() && problem == null, primary = true) { Editor.export() }
 }
 
-@Composable
-private fun Setting(id: String) {
-	val property = StandaloneConfig.getTree().getProp(id)
-	if (property.get() is Boolean) {
-		Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-			Label("${property.title}", Modifier.weight(1f), OneConfigTheme.current.textColorSecondary, 12.sp, FontWeight.Medium, lines = 2)
-			Option(property)
-		}
-	} else {
-		SmallHeading("${property.title}")
-		Box(Modifier.focusArea()) { Option(property) }
-	}
-	property.description?.let { Label("$it", Modifier.padding(top = 4.dp), muted(), 11.sp, lines = 4) }
-}
+internal var settingsVersion by mutableIntStateOf(0)
 
 @Composable
-private fun MoreToggle(open: Boolean, onToggle: () -> Unit) {
-	val color = OneConfigTheme.current.textColorSecondary
-	val turn by animateFloatAsState(if (open) 0f else 180f)
-	Row(
-		Modifier.padding(top = 12.dp).onClick(rememberInteractionSource(), onToggle),
-		verticalAlignment = Alignment.CenterVertically,
-		horizontalArrangement = Arrangement.spacedBy(4.dp),
-	) {
-		Label("More settings", color = color, size = 12.sp, weight = FontWeight.Medium)
-		Icon("up", null, Modifier.size(14.dp).rotate(turn), color)
+private fun Setting(id: String) {
+	settingsVersion
+	val property = StandaloneConfig.getTree().getProp(id)
+	val title = "${property.title}"
+	val description = property.description?.let { "$it" }
+	val value = property.get()
+	if (value is Boolean) {
+		ToggleRow(title, value, { write(property, it) }, description = description, control = ToggleControl.Switch)
+		return
 	}
+	LabeledField(title) {
+		when (value) {
+			is Enum<*> -> {
+				val labels = property[MetaKeys.OPTIONS].orEmpty()
+				val options = property.getMetadata<List<Enum<*>>>("optionValues") ?: value.declaringJavaClass.enumConstants.toList()
+				Select(value, options, { write(property, it) }, Modifier.fillMaxWidth(), label = { labels.getOrElse(it.ordinal) { _ -> it.name } })
+			}
+			is Number -> NumberField(
+				value.toFloat(),
+				{ write(property, if (value is Int) it.roundToInt() else it) },
+				Modifier.focusArea(),
+				range = property[MetaKeys.MIN]!!.toFloat()..property[MetaKeys.MAX]!!.toFloat(),
+				step = if (value is Int) 1f else 0.1f,
+				decimals = if (value is Int) 0 else 1,
+				unit = property[MetaKeys.UNIT],
+				commitOnType = false,
+			)
+			else -> TextField("$value", { write(property, it) }, Modifier.fillMaxWidth().focusArea())
+		}
+		description?.let { Label(it, color = muted(), size = 11.sp, lines = 4) }
+	}
+}
+
+private fun write(property: Property<*>, value: Any?) {
+	property.setAs(value)
+	settingsVersion++
 }
 
 @Composable
@@ -667,24 +702,6 @@ internal fun TextInput(
 			cursorBrush = SolidColor(accent),
 		)
 		if (unit != null) Label(unit, color = muted(), size = 12.sp)
-	}
-}
-
-@Composable
-private fun FrameRateField() {
-	Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(PANEL_GAP)) {
-		TextInput(
-			"${Editor.exportFps}",
-			Modifier.width(92.dp),
-			unit = "fps",
-			filter = { it.filter(Char::isDigit).take(MAX_FRAME_RATE_DIGITS) },
-		) {
-			val fps = frameRate(it, Editor.exportFps)
-			Editor.setFrameRate(fps)
-			"$fps"
-		}
-		if (Editor.exportFps > SMOOTH_FRAME_RATE) Label("Above $SMOOTH_FRAME_RATE fps exports slowly and most players drop the extra frames", color = DANGER, size = 11.sp)
-		else Label("At least $MIN_FRAME_RATE", color = muted(), size = 11.sp)
 	}
 }
 
