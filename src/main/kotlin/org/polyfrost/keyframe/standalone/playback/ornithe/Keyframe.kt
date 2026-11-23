@@ -72,6 +72,7 @@ object Keyframe : KeyframeCore() {
 		scoreboard.objectives.toList().forEach(scoreboard::removeObjective)
 		scoreboard.teams.toList().forEach(scoreboard::removeTeam)
 		player.clearStatusEffects()
+		LocalEvents.clearPredictions()
 		val gui = Minecraft.getInstance().gui
 		gui.resetPlayerTabOverlay()
 		gui.chat.clear()
@@ -82,6 +83,8 @@ object Keyframe : KeyframeCore() {
 	override fun started() = ArgentumCompat.forceUnbatchedFont(true)
 
 	override fun stopped() = ArgentumCompat.forceUnbatchedFont(false)
+
+	override fun ticked(tick: Int) = LocalEvents.expirePredictions(tick)
 
 	override fun sampleChatHistory(): ByteArray? {
 		val gui = Minecraft.getInstance().gui

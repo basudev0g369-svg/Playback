@@ -65,7 +65,10 @@ repositories {
         content { includeGroup("pl.tomgirl") }
     }
     mavenLocal {
-        content { includeModuleByRegex("org\\.polyfrost", "flashback_legacy.*") }
+        content {
+            includeModuleByRegex("org\\.polyfrost", "flashback_legacy.*")
+            includeGroup("org.polyfrost.oneconfig")
+        }
     }
     maven("https://redirector.kotlinlang.org/maven/compose-dev")
     google()
@@ -148,7 +151,7 @@ val addonMixins = if (isOrnithe) {
     if (sc.current.parsed < "1.21.6") addAll(listOf("MixinFont", "MixinHudRenderCallback", "MixinLayeredDraw"))
     if (sc.current.parsed >= "26.1") add("flashback.MixinSaveableFramebuffer")
     if (sc.current.parsed >= "26.2") add("MixinGui")
-    if (sc.current.parsed >= "26.3") addAll(listOf("MixinLevelExtractor", "MixinGuiRenderState", "MixinDynamicTexture", "MixinLayerOp"))
+    if (sc.current.parsed >= "26.3") addAll(listOf("MixinLevelExtractor", "MixinGuiRenderState", "MixinDynamicTexture", "MixinLayerOp", "MixinBlazeRendererKt"))
     if (sc.current.parsed >= "1.21.6") add("MixinHudRootLayer")
     if (sc.current.parsed < "26.2") add("MixinGameRendererHud")
     if (sc.current.parsed >= "1.21.11") add("MixinRenderingTextCollector")

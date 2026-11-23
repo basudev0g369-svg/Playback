@@ -59,6 +59,8 @@ abstract class KeyframeCore {
 
 	protected open fun stopped() {}
 
+	protected open fun ticked(tick: Int) {}
+
 	open fun sampleChatHistory(): ByteArray? = null
 
 	protected open fun onChatHistory(payload: ByteArray) {}
@@ -257,6 +259,7 @@ abstract class KeyframeCore {
 
 	private fun advance(session: Session) {
 		session.tick++
+		ticked(session.tick)
 		if (session.tick < session.rollTo && loaded) {
 			Minecraft.getInstance().gui.hud.tick(false)
 			Puppet.ageWhileRolling()

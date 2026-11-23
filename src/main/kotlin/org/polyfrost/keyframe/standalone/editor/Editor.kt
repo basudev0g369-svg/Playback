@@ -25,6 +25,7 @@ import org.polyfrost.keyframe.standalone.recording.RecordingInfo
 import org.polyfrost.keyframe.standalone.recording.ReplayFile
 import org.polyfrost.keyframe.standalone.recording.ReplayReader
 import org.polyfrost.keyframe.standalone.recording.scanRecording
+import org.polyfrost.oneconfig.api.hud.v1.HudManager
 import org.polyfrost.oneconfig.api.notifications.v1.Notifications
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -163,6 +164,7 @@ object Editor {
 		pendingFile = null
 		previewFile = null
 		PreviewTexture.close()
+		HudManager.viewport = null
 		StandaloneConfig.save()
 	}
 

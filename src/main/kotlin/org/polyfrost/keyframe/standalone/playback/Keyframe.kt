@@ -122,6 +122,7 @@ object Keyframe : KeyframeCore() {
 		scoreboard.objectives.toList().forEach(scoreboard::removeObjective)
 		scoreboard.playerTeams.toList().forEach(scoreboard::removePlayerTeam)
 		player.activeEffectsMap.clear()
+		level.getBlockStatePredictionHandler().serverVerifiedStates.clear()
 		Minecraft.getInstance().gui.hud.onDisconnected()
 	}
 

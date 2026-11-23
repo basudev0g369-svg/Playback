@@ -83,7 +83,10 @@ internal class Nv12Converter private constructor(
 
 	companion object {
 		private val LOGGER = LoggerFactory.getLogger("Keyframe")
+		//? if >=1.21.1 {
 		private val TOGGLES = intArrayOf(GL11.GL_BLEND, GL11.GL_SCISSOR_TEST, GL11.GL_CULL_FACE, GL11.GL_DEPTH_TEST, GL11.GL_STENCIL_TEST).toList()
+		//?} else
+		/*private val TOGGLES = intArrayOf(GL11.GL_BLEND, GL11.GL_SCISSOR_TEST, GL11.GL_CULL_FACE, GL11.GL_DEPTH_TEST, GL11.GL_STENCIL_TEST, GL11.GL_ALPHA_TEST).toList()*/
 
 		private const val INFO_LOG_LENGTH = 4096
 

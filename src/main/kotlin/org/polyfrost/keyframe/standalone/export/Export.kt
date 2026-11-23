@@ -541,9 +541,9 @@ object Export {
 	}
 
 	private fun failed(session: Session, reason: String) {
-		val tail = logTail(session.log).ifBlank { reason }
+		val tail = logTail(session.log).takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
 		runCatching { deleteTemps(session) }
-		done("Export failed at frame ${session.frame}: $tail. Log: ${session.log}", false)
+		done("Export failed at frame ${session.frame}: $reason$tail. Log: ${session.log}", false)
 	}
 
 	private fun stopWriter(session: Session) {

@@ -16,6 +16,7 @@ class LocalEventsTest {
 			LocalUiLoopStart(7, "oneconfig:ambience", 0.5f, 0.75f, true),
 			LocalUiLoopVolume(7, 0.125f),
 			LocalUiLoopStop(7),
+			LocalBlockState(-123L, 4567, 11, 42),
 		)
 		for (event in events) assertEquals(event, decodeEvent(encodeEvent(event)))
 	}
@@ -107,5 +108,23 @@ class LocalEventsTest {
 		loops.player.track(LocalUiLoopVolume(5, 0.5f))
 		loops.player.settle()
 		assertEquals(emptyList(), loops.started)
+	}
+
+	@Test
+	fun `pending blocks hold stale server states until confirmed or expired`() {
+		val pending = PendingBlocks<String>(20)
+		pending.predict(1L, "water", 0)
+		assertEquals(false, pending.accepts(1L, "air"))
+		assertEquals(true, pending.accepts(1L, "water"))
+		assertEquals(true, pending.accepts(1L, "air"))
+
+		pending.predict(2L, "water", 5)
+		assertEquals(false, pending.accepts(2L, "air"))
+		val applied = mutableListOf<Pair<Long, String>>()
+		pending.expire(24) { pos, state -> applied += pos to state }
+		assertEquals(emptyList<Pair<Long, String>>(), applied)
+		pending.expire(25) { pos, state -> applied += pos to state }
+		assertEquals(listOf(2L to "air"), applied)
+		assertEquals(true, pending.accepts(2L, "stone"))
 	}
 }

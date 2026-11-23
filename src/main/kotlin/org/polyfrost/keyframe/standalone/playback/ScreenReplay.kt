@@ -169,7 +169,8 @@ abstract class ScreenReplayCore {
 	private var reader: ReplayReader? = null
 	private var track: SampleTrack<CursorSample>? = null
 	private var pending: String? = null
-	protected var previewed: Screen? = null
+	var previewed: Screen? = null
+		protected set
 	private var state: ScreenState? = null
 	private var tabList = false
 	private var ownDebugOverlay = false

@@ -12,6 +12,6 @@ import org.spongepowered.asm.mixin.Mixin;
 abstract class Mixin_ClientWorld_Events {
 	@WrapMethod(method = "setBlockStateFromPacket")
 	private boolean keyframe$markPacket(BlockPos pos, BlockState state, Operation<Boolean> original) {
-		return LocalEvents.asPacket(() -> original.call(pos, state));
+		return LocalEvents.serverBlock(pos, state) && LocalEvents.asPacket(() -> original.call(pos, state));
 	}
 }

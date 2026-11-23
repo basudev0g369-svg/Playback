@@ -9,6 +9,7 @@ import net.minecraft.client.sound.SoundCategory
 import net.minecraft.client.sound.instance.AbstractTickableSoundInstance
 import net.minecraft.client.sound.instance.SoundInstance
 import net.minecraft.client.sound.instance.TickableSoundInstance
+import net.minecraft.client.world.ClientWorld
 import net.minecraft.resources.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
@@ -40,6 +41,8 @@ private class ReplayedUiSound(sound: String, volume: Float, pitch: Float, loopin
 private fun play(sound: ReplayedUiSound) = sound.also { Minecraft.getInstance().soundManager.play(it) }
 
 private fun isUi(instance: SoundInstance) = Minecraft.getInstance().soundManager.get(instance.location)?.category == SoundCategory.MASTER
+
+private const val PREDICTION_TICKS = 20
 
 object LocalEvents {
 	private val LOGGER = LoggerFactory.getLogger(Standalone.MOD_ID)
@@ -106,6 +109,27 @@ object LocalEvents {
 		if (!fromPacket) write(LocalBlockState(pos.toLong(), Block.serialize(state), flags))
 	}
 
+	private val pending = PendingBlocks<BlockState>(PREDICTION_TICKS)
+	private var pendingWorld: ClientWorld? = null
+
+	private fun pending(): PendingBlocks<BlockState> {
+		val world = Minecraft.getInstance().world
+		if (world !== pendingWorld) {
+			pending.clear()
+			pendingWorld = world
+		}
+		return pending
+	}
+
+	@JvmStatic
+	fun serverBlock(pos: BlockPos, state: BlockState): Boolean = !Keyframe.active || pending().accepts(pos.toLong(), state)
+
+	fun expirePredictions(tick: Int) = pending().expire(tick) { pos, state ->
+		Minecraft.getInstance().world?.setBlockStateFromPacket(BlockPos.fromLong(pos), state)
+	}
+
+	fun clearPredictions() = pending.clear()
+
 	private fun write(event: LocalEvent) = Recorder.writeEvent(encodeEvent(event))
 
 	fun replay(record: ReplayRecord, live: Boolean) {
@@ -114,7 +138,8 @@ object LocalEvents {
 			if (event is LocalUiLoopEvent) loops.track(event)
 			val mc = Minecraft.getInstance()
 			if (event is LocalBlockState) {
-				mc.world?.setBlockState(BlockPos.fromLong(event.pos), Block.deserialize(event.state), event.flags)
+				val state = Block.deserialize(event.state)
+				if (mc.world?.setBlockState(BlockPos.fromLong(event.pos), state, event.flags) == true) pending().predict(event.pos, state, record.tick)
 				return
 			}
 			if (!live) return

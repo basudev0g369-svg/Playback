@@ -36,6 +36,7 @@ private const val UI_LOOP_VOLUME = 6
 private const val UI_LOOP_STOP = 7
 private const val DESTROY_PROGRESS = 8
 private const val BLOCK_STATE = 9
+private const val PREDICTED_BLOCK_STATE = 10
 
 internal const val REPLAY_BREAKER = Int.MIN_VALUE
 
@@ -58,7 +59,7 @@ internal data class LocalBreaking(val pos: Long, val direction: Int, val playSou
 
 internal data class LocalDestroyProgress(val pos: Long, val progress: Int) : LocalEvent
 
-internal data class LocalBlockState(val pos: Long, val state: Int, val flags: Int) : LocalEvent
+internal data class LocalBlockState(val pos: Long, val state: Int, val flags: Int, val sequence: Int = -1) : LocalEvent
 
 internal data class LocalEntitySound(
 	val entity: Int,
@@ -120,10 +121,11 @@ internal fun encodeEvent(event: LocalEvent): ByteArray {
 				writeInt(event.progress)
 			}
 			is LocalBlockState -> {
-				writeByte(BLOCK_STATE)
+				writeByte(PREDICTED_BLOCK_STATE)
 				writeLong(event.pos)
 				writeInt(event.state)
 				writeInt(event.flags)
+				writeInt(event.sequence)
 			}
 			is LocalEntitySound -> {
 				writeByte(ENTITY_SOUND)
@@ -174,6 +176,7 @@ internal fun decodeEvent(payload: ByteArray): LocalEvent? = DataInputStream(Byte
 		UI_LOOP_STOP -> LocalUiLoopStop(readInt())
 		DESTROY_PROGRESS -> LocalDestroyProgress(readLong(), readInt())
 		BLOCK_STATE -> LocalBlockState(readLong(), readInt(), readInt())
+		PREDICTED_BLOCK_STATE -> LocalBlockState(readLong(), readInt(), readInt(), readInt())
 		else -> null
 	}
 }
@@ -234,6 +237,35 @@ internal class UiLoopPlayer<S : Any>(
 		playing.clear()
 		wanted.clear()
 	}
+}
+
+// 1.8 has no block change acks. A local change stays pending until the server sends the same state or the window ends,
+// and any other server state that arrives first is held and applied when it expires.
+// ponytail: fixed window, so pings above it still flicker and a rejected change lingers for up to a second. Derive it from the recorded ping if that matters.
+internal class PendingBlocks<S : Any>(private val window: Int) {
+	private class Entry<S>(val predicted: S, val expires: Int, var server: S? = null)
+
+	private val entries = HashMap<Long, Entry<S>>()
+
+	fun predict(pos: Long, state: S, tick: Int) {
+		entries[pos] = Entry(state, tick + window)
+	}
+
+	fun accepts(pos: Long, state: S): Boolean {
+		val entry = entries[pos] ?: return true
+		if (state == entry.predicted) entries.remove(pos) else entry.server = state
+		return state == entry.predicted
+	}
+
+	fun expire(tick: Int, apply: (Long, S) -> Unit) {
+		val expired = entries.entries.filter { tick >= it.value.expires }
+		for ((pos, entry) in expired) {
+			entries.remove(pos)
+			entry.server?.let { apply(pos, it) }
+		}
+	}
+
+	fun clear() = entries.clear()
 }
 
 internal inline fun <T> whileSet(flag: (Boolean) -> Unit, block: () -> T): T {
@@ -343,7 +375,21 @@ object LocalEvents {
 	fun destroyProgress(pos: BlockPos, progress: Int) = write(LocalDestroyProgress(pos.asLong(), progress))
 
 	@JvmStatic
-	fun localBlock(pos: BlockPos, state: BlockState, flags: Int) = write(LocalBlockState(pos.asLong(), Block.getId(state), flags))
+	fun localBlock(pos: BlockPos, state: BlockState, flags: Int, sequence: Int) =
+		write(LocalBlockState(pos.asLong(), Block.getId(state), flags, sequence))
+
+	private fun predictBlock(event: LocalBlockState) {
+		val mc = Minecraft.getInstance()
+		val level = mc.level ?: return
+		val pos = BlockPos.of(event.pos)
+		val old = level.getBlockState(pos)
+		if (!level.setBlock(pos, Block.stateById(event.state), event.flags)) return
+		val player = mc.player ?: return
+		if (event.sequence < 0) return
+		val handler = level.getBlockStatePredictionHandler()
+		handler.currentSequenceNr = event.sequence
+		handler.retainKnownServerState(pos, old, player)
+	}
 
 	private fun write(event: LocalEvent) = Recorder.writeEvent(encodeEvent(event))
 
@@ -352,10 +398,7 @@ object LocalEvents {
 			val event = decodeEvent(record.payload)
 			if (event is LocalUiLoopEvent) loops.track(event)
 			val mc = Minecraft.getInstance()
-			if (event is LocalBlockState) {
-				mc.level?.setBlock(BlockPos.of(event.pos), Block.stateById(event.state), event.flags)
-				return
-			}
+			if (event is LocalBlockState) return predictBlock(event)
 			if (!live) return
 			if (event is LocalUiLoopEvent) return loops.settle()
 			if (event is LocalUiSound) {

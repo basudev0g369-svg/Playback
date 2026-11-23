@@ -11,6 +11,9 @@ accessible field net/minecraft/client/player/FirstPersonHandsAndItems offHandHei
 accessible field net/minecraft/client/player/FirstPersonHandsAndItems oOffHandHeight F
 #?}
 accessible field net/minecraft/world/entity/LivingEntity attackStrengthTicker I
+accessible method net/minecraft/client/multiplayer/ClientLevel getBlockStatePredictionHandler ()Lnet/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler;
+accessible field net/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler currentSequenceNr I
+accessible field net/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler serverVerifiedStates Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;
 #? if >=26.2
 accessible method net/minecraft/client/gui/Hud extractSpyglassOverlay (Lnet/minecraft/client/gui/GuiGraphicsExtractor;F)V
 #? if >=26.1 && <26.2

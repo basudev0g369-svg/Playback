@@ -7,6 +7,8 @@ import org.polyfrost.keyframe.standalone.editor.Editor
 import org.polyfrost.keyframe.standalone.editor.hudArea
 import org.polyfrost.keyframe.standalone.mixin.Mixin_Window_Editor
 import org.polyfrost.keyframe.standalone.playback.Keyframe
+import org.polyfrost.oneconfig.api.hud.v1.HudManager
+import org.polyfrost.oneconfig.api.hud.v1.HudViewport
 import kotlin.math.ceil
 
 private const val BLACK = 0xFF000000.toInt()
@@ -29,12 +31,17 @@ object PreviewFrame {
 	}
 
 	fun fitGui(graphics: GuiGraphicsExtractor, extract: Runnable) {
-		if (!Keyframe.previewing || PreviewTexture.bounds == null) return extract.run()
+		if (!Keyframe.previewing || PreviewTexture.bounds == null) {
+			HudManager.viewport = null
+			return extract.run()
+		}
 		val mc = Minecraft.getInstance()
 		val window = mc.window
 		val guiWidth = window.guiScaledWidth
 		val guiHeight = window.guiScaledHeight
 		val area = hudArea(guiWidth, guiHeight, PreviewTexture.crop, exportGuiHeight())
+		val pixels = window.guiScale.toFloat()
+		HudManager.viewport = HudViewport(area.x * pixels, 0f, area.width.toFloat(), area.height.toFloat(), area.scale * pixels)
 		@Suppress("CAST_NEVER_SUCCEEDS")
 		val sizes = window as Mixin_Window_Editor
 		graphics.pose().pushMatrix().translate(area.x, 0f).scale(area.scale)

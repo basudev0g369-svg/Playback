@@ -10,6 +10,8 @@ import org.polyfrost.keyframe.standalone.compat.*
 import org.polyfrost.keyframe.standalone.editor.Editor
 import org.polyfrost.keyframe.standalone.editor.hudArea
 import org.polyfrost.keyframe.standalone.playback.Keyframe
+import org.polyfrost.oneconfig.api.hud.v1.HudManager
+import org.polyfrost.oneconfig.api.hud.v1.HudViewport
 import kotlin.math.ceil
 
 private const val BLACK = 0xFF000000.toInt()
@@ -60,11 +62,15 @@ object PreviewFrame {
 
 	@JvmStatic
 	fun fitGui(draw: Runnable) {
-		if (!Keyframe.previewing || PreviewTexture.bounds == null) return draw.run()
+		if (!Keyframe.previewing || PreviewTexture.bounds == null) {
+			HudManager.viewport = null
+			return draw.run()
+		}
 		val mc = Minecraft.getInstance()
 		val window = Window(mc)
 		val area = hudArea(window.width, window.height, PreviewTexture.crop, exportGuiHeight())
 		val pixels = window.scale * area.scale
+		HudManager.viewport = HudViewport(area.x * window.scale, 0f, area.width.toFloat(), area.height.toFloat(), pixels)
 		GlStateManager.viewport((area.x * window.scale).toInt(), 0, (area.width * pixels).toInt(), mc.height)
 		guiWidth = area.width
 		guiHeight = area.height

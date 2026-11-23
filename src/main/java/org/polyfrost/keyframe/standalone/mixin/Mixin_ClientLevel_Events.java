@@ -16,6 +16,6 @@ abstract class Mixin_ClientLevel_Events {
 		at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler;retainKnownServerState(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/client/player/LocalPlayer;)V")
 	)
 	private void keyframe$recordLocalBlock(BlockPos pos, BlockState state, int flags, int recursion, CallbackInfoReturnable<Boolean> cir) {
-		LocalEvents.localBlock(pos, state, flags);
+		LocalEvents.localBlock(pos, state, flags, ((ClientLevel) (Object) this).getBlockStatePredictionHandler().currentSequence());
 	}
 }

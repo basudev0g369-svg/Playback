@@ -76,6 +76,26 @@ public final class GuiMeshCapture implements Action {
         dynamicTextures.add(texture);
     }
 
+    // poly-compose gives its glyph pages a 1x1 CPU image and writes the glyphs straight to the GPU.
+    // Copy those writes into the DynamicTexture's pixels so write() saves the real atlas.
+    public static void mirror(DynamicTexture texture, ByteBuffer data, int y, int w, int h) {
+        NativeImage pixels = texture.getPixels();
+        if (pixels == null) {
+            return;
+        }
+        int width = texture.getTexture().getWidth(0);
+        int height = texture.getTexture().getHeight(0);
+        if (pixels.getWidth() != width || pixels.getHeight() != height) {
+            pixels = new NativeImage(width, height, true);
+            texture.setPixels(pixels);
+        }
+        long source = MemoryUtil.memAddress(data);
+        long target = pixels.getPointer();
+        for (int row = 0; row < h && y + row < height; row++) {
+            MemoryUtil.memCopy(source + (long) row * w * 4, target + ((long) (y + row) * width) * 4, (long) Math.min(w, width) * 4);
+        }
+    }
+
     public static void reset() {
         ids.clear();
         used.clear();
